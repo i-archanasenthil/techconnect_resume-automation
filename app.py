@@ -5,10 +5,15 @@ import tempfile
 import os
 import re
 import io
+import pandas as pd
+import numpy as np
+from PIL import Image
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
+
+st.set_page_config(layout = "wide")
 
 os.environ["STREAMLIT_WATCHER_TYPE"] = "none"
 
@@ -17,6 +22,7 @@ os.environ["STREAMLIT_WATCHER_TYPE"] = "none"
 
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 CLIENTS_SECRET_FILE = st.secrets["google"]["client_secret_path"]
+
 #To avoid for reauthentication everytime caches the result
 @st.cache_resource(show_spinner="Loading embedding model...")
 def load_model():
@@ -87,49 +93,72 @@ def extract_text_from_pdf_bytes(pdf_bytes):
             text += page_text
     return text
 
-st.title("Resume Matching Application")
 
-job_description = st.text_area("Paste Job Description")
-folder_link = st.text_area("Google Drive Resume Links", placeholder="https://drive.google.com/drive/folders/...")
+logo = Image.open("assets\logo.jfif")
 
-if st.button("Run Match"):
-    if not job_description or not folder_link.strip():
-        st.warning("Please provide both the job description and a valid Drive folder link.")
+col1, col2, col3 = st.columns([1,3,1])
+with col1:
+    st.image(logo, width=100)
+with col2:
+    st.title("Tech Connect Alberta Resume Sorter")
 
-    else:
-        st.info("Authenticating with Google...")
-        drive_service = authenticate_user()
-        folder_id = extract_id_from_drive_url(folder_link)
+c1, c2 = st.columns(2)
 
-        if not folder_id:
-            st.error("Could not extract folder ID from the link.")
+with c1:
+    job_description = st.text_area("Paste Job Description")
+    folder_link = st.text_area("Google Drive Resume Links", placeholder="https://drive.google.com/drive/folders/...")
+
+    if st.button("Run Match"):
+        if not job_description or not folder_link.strip():
+            st.warning("Please provide both the job description and a valid Drive folder link.")
+
         else:
-            st.info("Fetching PDF files from the Drive Folder")
-            files = list_files_in_folder(drive_service, folder_id)
+            st.info("Authenticating with Google...")
+            drive_service = authenticate_user()
+            folder_id = extract_id_from_drive_url(folder_link)
 
-            if not files:
-                st.warning("No PDF files found in the folder")
+            if not folder_id:
+                st.error("Could not extract folder ID from the link.")
             else:
-                jd_embedding = model.encode(job_description, convert_to_tensor = True) 
-                results = []
+                st.info("Fetching PDF files from the Drive Folder")
+                files = list_files_in_folder(drive_service, folder_id)
 
-                for f in files:
-                    try:
-                        file_bytes = download_file(drive_service, f["id"])
-                        text = extract_text_from_pdf_bytes(file_bytes)
+                if not files:
+                    st.warning("No PDF files found in the folder")
+                else:
+                    jd_embedding = model.encode(job_description, convert_to_tensor = True) 
+                    results = []
 
-                        if not text.strip():
-                            st.warning(f"No text found in file : {f['name']}")
-                            continue
+                    for f in files:
+                        try:
+                            file_bytes = download_file(drive_service, f["id"])
+                            text = extract_text_from_pdf_bytes(file_bytes)
 
-                        resume_embedding = model.encode(text, convert_to_tensor=True)
-                        score = util.cos_sim(jd_embedding, resume_embedding).item()
-                        results.append((f['name'], score))
+                            if not text.strip():
+                                st.warning(f"No text found in file : {f['name']}")
+                                continue
 
-                    except Exception as e:
-                        st.error(f"Error processing {f['name']}: {e}")
+                            resume_embedding = model.encode(text, convert_to_tensor=True)
+                            score = util.cos_sim(jd_embedding, resume_embedding).item()
+                            file_link = f"https://drive.google.com/file/d/{f['id']}/view?usp=sharing"
 
-                st.subheader("Match Results")
-                for name, score in sorted(results, key = lambda x: x[1], reverse = True):
-                    st.markdown(f" - **{name}** - **Similarity Score**: `{score:.4f}`")
-                
+                            results.append({
+                                "Result Name": f['name'], 
+                                "Similarity Score": round(score, 4),
+                                "Download Link": file_link
+                            })
+
+                        except Exception as e:
+                            st.error(f"Error processing {f['name']}: {e}")
+
+                    if results:
+                        with c2:
+                            st.subheader("Match Results")
+                            df = pd.DataFrame(results)
+                            df = df.sort_values(by = "Similarity Score", ascending = False)
+
+                            df['Download Link'] = df['Download Link'].apply(lambda url: f"[Download Resume]({url})")
+                            st.write(df.to_markdown(index= False), unsafe_allow_html=True)
+                        
+
+    
