@@ -102,7 +102,9 @@ with col1:
 with col2:
     st.title("Tech Connect Alberta Resume Sorter")
 
-c1, c2 = st.columns(2)
+st.divider()
+
+c1, c_divider, c2 = st.columns([5, 0.5, 5])
 
 with c1:
     job_description = st.text_area("Paste Job Description")
@@ -152,6 +154,7 @@ with c1:
                             st.error(f"Error processing {f['name']}: {e}")
 
                     if results:
+
                         with c2:
                             st.subheader("Match Results")
                             df = pd.DataFrame(results)
