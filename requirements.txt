@@ -3,13 +3,13 @@ setuptools>=65.0
 wheel>=0.38
 
 streamlit==1.35.0
-sentence-transformers==2.2.2
+sentence-transformers==2.1.0
 transformers==4.30.0
 torch>=1.9.0
 numpy>=1.21
 pandas>=1.5
 scikit-learn>=1.2
-PyPDf2==3.0.1
+PyPDF2==3.0.1
 google-api-python-client==2.127.0
 google-auth-httplib2
 google-auth-oauthlib==1.2.0
