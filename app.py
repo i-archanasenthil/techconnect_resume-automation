@@ -21,7 +21,17 @@ os.environ["STREAMLIT_WATCHER_TYPE"] = "none"
 #Limiting the access to read-only, no edits,deletes or modification can be done to the file
 
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
-CLIENTS_SECRET_FILE = st.secrets["google"]["client_secret_path"]
+client_config = {
+    "installed":{
+        "client_id": st.secrets["google"]["client_id"],
+        "project_id": st.secrets["google"]["project_id"],
+        "auth_uri": st.secrets["google"]["auth_uri"],
+        "token_uri": st.secrets["google"]["token_uri"],
+        "auth_provider_x509_cert_url": st.secrets["google"]["auth_provider_x509_cert_url"],
+        "client_secret": st.secrets["google"]["client_secret"],
+        "redirect_uris": [st.secrets["google"]["redirect_uris"]]
+    }
+}
 
 #To avoid for reauthentication everytime caches the result
 @st.cache_resource(show_spinner="Loading embedding model...")
@@ -34,7 +44,7 @@ def authenticate_user():
     Opens the user's browser for authentication and send back the credentials
     creates a drive API client for access
     """
-    flow = InstalledAppFlow.from_client_secrets_file(CLIENTS_SECRET_FILE, SCOPES)
+    flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
     creds = flow.run_local_server(port=0)
     return build('drive', 'v3', credentials=creds)
 
