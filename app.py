@@ -8,6 +8,8 @@ import io
 import pandas as pd
 import numpy as np
 from PIL import Image
+import docx
+from docx import Document
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -66,14 +68,12 @@ def extract_id_from_drive_url(drive_url):
     st.error("Invalid Google Drive URL format,")
     return None
 
-def list_files_in_folder(drive_service, folder_id, mime_filter="application/pdf"):
+def list_files_in_folder(drive_service, folder_id):
     """
     Lists files inside a Google Drive Folder
     """
     query = f"'{folder_id}' in parents and trashed = false"
-    if mime_filter:
-        query += f" and mimeType = '{mime_filter}'"
-    response = drive_service.files().list(q=query, fields="files(id, name)").execute()
+    response = drive_service.files().list(q=query, fields="files(id, name, mimeType)").execute()
     return response.get("files", [])
 
 def download_file(drive_service, file_id):
@@ -102,6 +102,11 @@ def extract_text_from_pdf_bytes(pdf_bytes):
         if page_text:
             text += page_text
     return text
+
+def extract_text_from_docx_bytes(docx_bytes):
+    docx_stream = io.BytesIO(docx_bytes)
+    doc = Document(docx_stream)
+    return "\n".join([para.text for para in doc.paragraphs])
 
 
 logo = Image.open("assets\logo.jfif")
@@ -144,7 +149,14 @@ with c1:
                     for f in files:
                         try:
                             file_bytes = download_file(drive_service, f["id"])
-                            text = extract_text_from_pdf_bytes(file_bytes)
+
+                            if f["name"].lower().endswith(".pdf"):
+                                text = extract_text_from_pdf_bytes(file_bytes)
+                            elif f["name"].lower().endswith(".docx"):
+                                text = extract_text_from_docx_bytes(file_bytes)
+                            else:
+                                st.warning(f"Unsupported file type: {f['name']}")
+                                continue
 
                             if not text.strip():
                                 st.warning(f"No text found in file : {f['name']}")
