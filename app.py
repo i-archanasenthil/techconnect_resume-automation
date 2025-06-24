@@ -15,6 +15,10 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 st.set_page_config(layout = "wide")
 
 os.environ["STREAMLIT_WATCHER_TYPE"] = "none"
@@ -108,6 +112,41 @@ def extract_text_from_docx_bytes(docx_bytes):
     doc = Document(docx_stream)
     return "\n".join([para.text for para in doc.paragraphs])
 
+def send_email_with_results(df):
+    sender = st.secrets["email"]["sender"]
+    password = st.secrets["email"]["password"]
+    receiver = st.secrets["email"]["receiver"]
+
+    smtp_server = st.secrets["email"]["smtp_server"]
+    smtp_port = st.secrets["email"]["smtp_port"]
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "Resume Matching Results"
+    msg["From"] = sender
+    msg["To"] = receiver
+
+    html_table = df.to_html(index=False, escape=False)
+    body = f"""
+    <html>
+        <body>
+            <p>Hello Team,<br><br>
+            Here are the results from the resume matching app:</p>
+            {html_table}
+            <br><p>Best Regards,<br>Tech Connect Alberta</p>
+        </body>
+    </html>
+    """
+    msg.attach(MIMEText(body, "html"))
+
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(sender, password)
+            server.sendmail(sender, receiver, msg.as_string())
+        st.success("Email sent successfully!")
+    except Exception as e:
+        st.error(f"Failed to send email: {e}")
+
 
 logo = Image.open("assets\logo.jfif")
 
@@ -184,6 +223,13 @@ with c1:
 
                             df['Download Link'] = df['Download Link'].apply(lambda url: f"[Download Resume]({url})")
                             st.write(df.to_markdown(index= False), unsafe_allow_html=True)
+                            st.session_state["match_results_df"] = df
+    
+    if st.button("Send Results as Email"):
+        if "match_results_df" in st.session_state:
+            send_email_with_results(st.session_state["match_results_df"])
+        else:
+            st.warning("Please run the match first before sending the email")
                         
 
     
