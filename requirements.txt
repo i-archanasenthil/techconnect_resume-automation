@@ -2,6 +2,7 @@ pip>=23.0
 setuptools>=65.0
 wheel>=0.38
 
+python-docx>=0.8.11
 streamlit==1.35.0
 sentence-transformers==2.2.2
 transformers==4.28.1
@@ -15,5 +16,6 @@ google-api-python-client==2.127.0
 google-auth-httplib2
 google-auth-oauthlib==1.2.0
 google-auth==2.29.0
-huggingface_hub==0.10.1
+huggingface_hub
 tabulate>=0.8.10
+
