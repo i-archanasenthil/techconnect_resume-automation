@@ -123,7 +123,7 @@ def send_email_with_results(df):
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Resume Matching Results"
     msg["From"] = sender
-    msg["To"] = receiver
+    msg["To"] = ",".join(receiver)
 
     html_table = df.to_html(index=False, escape=False)
     body = f"""
