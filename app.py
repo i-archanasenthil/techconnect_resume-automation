@@ -1,3 +1,10 @@
+import types
+import sys
+
+torch_classes_path = types.ModuleType("torch.classes")
+torch_classes_path.__path__ = []
+sys.modules["torch.classes"] = torch_classes_path
+
 import streamlit as st
 from sentence_transformers import SentenceTransformer, util
 from PyPDF2 import PdfReader
@@ -148,7 +155,7 @@ def send_email_with_results(df):
         st.error(f"Failed to send email: {e}")
 
 
-logo = Image.open("assets\logo.jfif")
+logo = Image.open("assets/logo.jfif")
 
 col1, col2, col3 = st.columns([1,3,1])
 with col1:
